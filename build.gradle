@@ -128,6 +128,9 @@ dependencies {
     implementation fg.deobf("curse.maven:caelus-308989:3929284")
     implementation fg.deobf("curse.maven:geckolib-388172:4407241")
     implementation fg.deobf("curse.maven:playeranimator-658587:4418149")
+    // nameless trinkets
+    implementation fg.deobf("curse.maven:nameless-trinkets-541466:4741673")
+    implementation fg.deobf("curse.maven:expandability-465066:3984029")
 }
 
 def resourceTargets = ['META-INF/mods.toml', 'pack.mcmeta']
