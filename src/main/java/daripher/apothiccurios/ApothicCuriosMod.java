@@ -101,6 +101,7 @@ public class ApothicCuriosMod {
     Entity shooter = arrow.getOwner();
     if (!(shooter instanceof LivingEntity living)) return;
     getCuriosAffixes(living).forEach(affix -> affix.onArrowFired(living, arrow));
+    getEquippedCurios(living).forEach(curio -> AffixHelper.copyFrom(curio, arrow));
   }
 
   private void applyCurioAttributeAffixes(CurioAttributeModifierEvent event) {
