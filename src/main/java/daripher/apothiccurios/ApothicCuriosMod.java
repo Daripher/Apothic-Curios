@@ -109,8 +109,8 @@ public class ApothicCuriosMod {
     if (!stack.hasTag()) return;
     SlotContext slotContext = event.getSlotContext();
     if (!CuriosApi.getCuriosHelper().isStackValid(slotContext, stack)) return;
-    LootCategory slotLootCategory = LootCategory.byId("curios:" + slotContext.identifier());
-    if (LootCategory.forItem(stack) != slotLootCategory) return;
+    LootCategory category = LootCategory.BY_ID.get("curios:" + slotContext.identifier());
+    if (LootCategory.forItem(stack) != category) return;
     AffixHelper.getAffixes(stack).forEach((a, i) -> i.addModifiers(FAKE_SLOT, event::addModifier));
   }
 
