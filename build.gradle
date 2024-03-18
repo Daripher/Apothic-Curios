@@ -119,12 +119,12 @@ dependencies {
         jarJar.ranged(it, "[0.2.1,)")
     }
     // curios
-    implementation fg.deobf("top.theillusivec4.curios:curios-forge:1.19.2-5.1.4.1")
+    implementation fg.deobf("top.theillusivec4.curios:curios-forge:1.19.2-5.1.6.1")
     // apotheosis
-	implementation fg.deobf("curse.maven:apotheosis-313970:4730358")
-	implementation fg.deobf("curse.maven:placebo-283644:4677899")
+	implementation fg.deobf("curse.maven:apotheosis-313970:5180227")
+	implementation fg.deobf("curse.maven:placebo-283644:5180198")
     // iron's spell and something
-    implementation fg.deobf("curse.maven:irons-spells-n-spellbooks-855414:4953747")
+    implementation fg.deobf("curse.maven:irons-spells-n-spellbooks-855414:5190147")
     implementation fg.deobf("curse.maven:caelus-308989:3929284")
     implementation fg.deobf("curse.maven:geckolib-388172:4407241")
     implementation fg.deobf("curse.maven:playeranimator-658587:4418149")

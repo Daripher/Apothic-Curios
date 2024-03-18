@@ -29,7 +29,9 @@ import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
 import shadows.apotheosis.Apotheosis;
 import shadows.apotheosis.adventure.affix.AffixHelper;
 import shadows.apotheosis.adventure.affix.AffixInstance;
@@ -60,6 +62,7 @@ public class ApothicCuriosMod {
     forgeEventBus.addListener(this::applyCurioDamageAffixes);
     forgeEventBus.addListener(EventPriority.LOWEST, this::removeFakeCurioAttributes);
     forgeEventBus.addListener(EventPriority.LOWEST, this::removeGemAttributeTooltips);
+    ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
   }
 
   private void addCurioSocketTooltip(RenderTooltipEvent.GatherComponents event) {
@@ -70,7 +73,12 @@ public class ApothicCuriosMod {
     event.getTooltipElements().removeIf(c -> c.right().filter(isSocketComponent).isPresent());
     SocketTooltipRenderer.SocketComponent component =
         new SocketTooltipRenderer.SocketComponent(stack, SocketHelper.getGems(stack));
-    event.getTooltipElements().add(Either.right(component));
+
+    if (ClientConfig.SHIFT_SOCKET_TOOLTIP.get()) {
+      event.getTooltipElements().add(event.getTooltipElements().size() - 1, Either.right(component));
+    } else {
+      event.getTooltipElements().add(Either.right(component));
+    }
   }
 
   @SubscribeEvent
@@ -136,7 +144,7 @@ public class ApothicCuriosMod {
   }
 
   private void removeTooltip(ItemTooltipEvent event, GemInstance gem, ItemStack stack) {
-    Optional<GemBonus> bonus = gem.gem().getBonus(LootCategory.forItem(stack));
+    Optional<GemBonus> bonus = gem.gem().getBonus(LootCategory.forItem(stack), gem.rarity());
     if (bonus.isEmpty()) return;
     getGemModifiersTooltips(gem, bonus.get()).forEach(c -> removeTooltip(event, c));
     removeTooltip(event, bonus.get().getSocketBonusTooltip(gem.gemStack(), gem.rarity()));
