@@ -38,6 +38,7 @@ import shadows.apotheosis.adventure.affix.socket.gem.GemInstance;
 import shadows.apotheosis.adventure.affix.socket.gem.bonus.GemBonus;
 import shadows.apotheosis.adventure.client.SocketTooltipRenderer;
 import shadows.apotheosis.adventure.loot.LootCategory;
+import shadows.apotheosis.adventure.loot.LootRarity;
 import shadows.apotheosis.core.attributeslib.AttributesLib;
 import shadows.apotheosis.core.attributeslib.api.IFormattableAttribute;
 import top.theillusivec4.curios.api.CuriosApi;
@@ -136,10 +137,12 @@ public class ApothicCuriosMod {
   }
 
   private void removeTooltip(ItemTooltipEvent event, GemInstance gem, ItemStack stack) {
-    Optional<GemBonus> bonus = gem.gem().getBonus(LootCategory.forItem(stack));
+    LootCategory lootCategory = LootCategory.forItem(stack);
+    LootRarity rarity = gem.rarity();
+    Optional<GemBonus> bonus = gem.gem().getBonus(lootCategory, rarity);
     if (bonus.isEmpty()) return;
     getGemModifiersTooltips(gem, bonus.get()).forEach(c -> removeTooltip(event, c));
-    removeTooltip(event, bonus.get().getSocketBonusTooltip(gem.gemStack(), gem.rarity()));
+    removeTooltip(event, bonus.get().getSocketBonusTooltip(gem.gemStack(), rarity));
   }
 
   private static List<Component> getGemModifiersTooltips(GemInstance gem, GemBonus bonus) {

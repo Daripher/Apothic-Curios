@@ -121,8 +121,8 @@ dependencies {
     // curios
     implementation fg.deobf("top.theillusivec4.curios:curios-forge:1.19.2-5.1.4.1")
     // apotheosis
-	implementation fg.deobf("curse.maven:apotheosis-313970:4730358")
-	implementation fg.deobf("curse.maven:placebo-283644:4677899")
+    implementation fg.deobf("curse.maven:apotheosis-313970:5322410")
+    implementation fg.deobf("curse.maven:placebo-283644:5180198")
     // iron's spell and something
     implementation fg.deobf("curse.maven:irons-spells-n-spellbooks-855414:4953747")
     implementation fg.deobf("curse.maven:caelus-308989:3929284")
