@@ -1,5 +1,7 @@
 package daripher.apothiccurios;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 import com.google.common.util.concurrent.AtomicDouble;
 import com.mojang.datafixers.util.Either;
 import dev.shadowsoffire.apotheosis.Apotheosis;
@@ -7,26 +9,30 @@ import dev.shadowsoffire.apotheosis.adventure.affix.AffixHelper;
 import dev.shadowsoffire.apotheosis.adventure.affix.AffixInstance;
 import dev.shadowsoffire.apotheosis.adventure.client.SocketTooltipRenderer;
 import dev.shadowsoffire.apotheosis.adventure.loot.LootCategory;
-import dev.shadowsoffire.apotheosis.adventure.loot.LootRarity;
 import dev.shadowsoffire.apotheosis.adventure.socket.SocketHelper;
-import dev.shadowsoffire.apotheosis.adventure.socket.gem.GemInstance;
-import dev.shadowsoffire.apotheosis.adventure.socket.gem.bonus.GemBonus;
+import dev.shadowsoffire.apotheosis.adventure.socket.SocketedGems;
 import dev.shadowsoffire.attributeslib.AttributesLib;
+import dev.shadowsoffire.attributeslib.api.AttributeHelper;
 import dev.shadowsoffire.attributeslib.api.IFormattableAttribute;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.event.RenderTooltipEvent;
@@ -114,7 +120,8 @@ public class ApothicCuriosMod {
     LootCategory category = LootCategory.BY_ID.get("curios:" + slotContext.identifier());
     if (LootCategory.forItem(stack) != category) return;
     AffixHelper.getAffixes(stack).forEach((a, i) -> i.addModifiers(FAKE_SLOT, event::addModifier));
-    SocketHelper.getGems(stack).addModifiers(LootCategory.forItem(stack), FAKE_SLOT, event::addModifier);
+    SocketHelper.getGems(stack)
+        .addModifiers(LootCategory.forItem(stack), FAKE_SLOT, event::addModifier);
   }
 
   private void applyCurioDamageAffixes(LivingHurtEvent event) {
@@ -135,29 +142,67 @@ public class ApothicCuriosMod {
     ItemStack stack = event.getItemStack();
     if (!stack.hasTag()) return;
     if (isNonCurio(stack)) return;
-    SocketHelper.getGems(stack).forEach(g -> removeTooltip(event, g, stack));
+    getGemTooltips(stack).forEach(component -> removeTooltip(event, component));
   }
 
-  private void removeTooltip(ItemTooltipEvent event, GemInstance gem, ItemStack stack) {
-    if (!gem.rarity().isBound()) return;
-    LootRarity rarity = gem.rarity().get();
-    Optional<GemBonus> bonus = gem.gem().get().getBonus(LootCategory.forItem(stack), rarity);
-    if (bonus.isEmpty()) return;
-    getGemModifiersTooltips(gem, bonus.get()).forEach(c -> removeTooltip(event, c));
-    removeTooltip(event, bonus.get().getSocketBonusTooltip(gem.gemStack(), rarity));
-  }
+  private List<Component> getGemTooltips(ItemStack stack) {
+    TooltipFlag flag = TooltipFlag.NORMAL;
+    List<Component> components = new ArrayList<>();
+    SocketedGems gems = SocketHelper.getGems(stack);
+    Multimap<Attribute, AttributeModifier> modifierMap = HashMultimap.create();
+    gems.forEach(gemInstance -> gemInstance.addModifiers(FAKE_SLOT, modifierMap::put));
+    for (Attribute attr : modifierMap.keySet()) {
+      Collection<AttributeModifier> modifiers = modifierMap.get(attr);
 
-  private static List<Component> getGemModifiersTooltips(GemInstance gem, GemBonus bonus) {
-    List<Component> tooltips = new ArrayList<>();
-    bonus.addModifiers(
-        gem.gemStack(),
-        gem.rarity().get(),
-        (a, m) -> {
-          MutableComponent tooltip =
-              IFormattableAttribute.toComponent(a, m, AttributesLib.getTooltipFlag());
-          tooltips.add(tooltip);
-        });
-    return tooltips;
+      if (modifiers.size() > 1) {
+        double[] sums = new double[3];
+        boolean[] merged = new boolean[3];
+        Map<AttributeModifier.Operation, List<AttributeModifier>> shiftExpands = new HashMap<>();
+        for (AttributeModifier modifier : modifierMap.values()) {
+          if (modifier.getAmount() == 0) continue;
+          if (sums[modifier.getOperation().ordinal()] != 0)
+            merged[modifier.getOperation().ordinal()] = true;
+          sums[modifier.getOperation().ordinal()] += modifier.getAmount();
+          shiftExpands
+              .computeIfAbsent(modifier.getOperation(), k -> new LinkedList<>())
+              .add(modifier);
+        }
+        for (AttributeModifier.Operation op : AttributeModifier.Operation.values()) {
+          int i = op.ordinal();
+          if (sums[i] == 0) continue;
+          if (merged[i]) {
+            TextColor color =
+                sums[i] < 0 ? TextColor.fromRgb(0xF93131) : TextColor.fromRgb(0x7A7AF9);
+            if (sums[i] < 0) sums[i] *= -1;
+            var fakeModif =
+                new AttributeModifier(
+                    UUID.randomUUID(), () -> AttributesLib.MODID + ":merged", sums[i], op);
+            MutableComponent comp = IFormattableAttribute.toComponent(attr, fakeModif, flag);
+            components.add(comp.withStyle(comp.getStyle().withColor(color)));
+            if (merged[i] && Screen.hasShiftDown()) {
+              shiftExpands
+                  .get(AttributeModifier.Operation.fromValue(i))
+                  .forEach(
+                      modif ->
+                          components.add(
+                              AttributeHelper.list()
+                                  .append(IFormattableAttribute.toComponent(attr, modif, flag))));
+            }
+          } else {
+            var fakeModif =
+                new AttributeModifier(
+                    UUID.randomUUID(), () -> AttributesLib.MODID + ":merged", sums[i], op);
+            components.add(IFormattableAttribute.toComponent(attr, fakeModif, flag));
+          }
+        }
+      } else
+        modifiers.forEach(
+            m -> {
+              if (m.getAmount() != 0)
+                components.add(IFormattableAttribute.toComponent(attr, m, flag));
+            });
+    }
+    return components;
   }
 
   private static void removeTooltip(ItemTooltipEvent event, Component tooltip) {
