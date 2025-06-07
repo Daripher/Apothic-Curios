@@ -114,6 +114,7 @@ public class ApothicCuriosMod {
     LootCategory category = LootCategory.BY_ID.get("curios:" + slotContext.identifier());
     if (LootCategory.forItem(stack) != category) return;
     AffixHelper.getAffixes(stack).forEach((a, i) -> i.addModifiers(FAKE_SLOT, event::addModifier));
+    SocketHelper.getGems(stack).addModifiers(LootCategory.forItem(stack), FAKE_SLOT, event::addModifier);
   }
 
   private void applyCurioDamageAffixes(LivingHurtEvent event) {
